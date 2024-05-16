@@ -29,9 +29,11 @@ const createQuestionController = async (req, res) => {
       timeRequired,
     ].some((field) => field?.trim() === undefined || field?.trim() === "")
   ) {
-    return res
-      .status(400)
-      .send({ success: false, message: "All Fields are required question, correcrAnswerIndex, subject, level, questionType, timeRequired" });
+    return res.status(400).send({
+      success: false,
+      message:
+        "All Fields are required question, correcrAnswerIndex, subject, level, questionType, timeRequired",
+    });
   }
 
   //check if atleast 2 options are given
@@ -204,24 +206,23 @@ const updateQuestionController = async (req, res) => {
     });
   }
 
-  const q = await getExistingQuestionById(quid);
+  // const q = await getExistingQuestionById(quid).catch((err) => {
+  //   return res
+  //     .status(400)
+  //     .send({ success: false, message: err.name, data: err.message });
+  // });
 
-  if (!q) {
-    return res.status(404).send({
-      success: false,
-      message: "Question Does Not Exists with given quid",
-      data: fieldsToUpdate,
-    });
-  }
-
-  if (q.addedBy !== req.user._id) {
-    return res.status(401).send({
-      success: false,
-      message: "Not Authorized to update this question",
-      data: {},
-    });
-  }
   try {
+    const q = await questionModel.findOne({ _id: quid, addedBy: req.user._id });
+
+    if (!q) {
+      return res.status(404).send({
+        success: false,
+        message: "Question Does Not Exists with given quid",
+        data: fieldsToUpdate,
+      });
+    }
+
     //check if the question exists with with same level
     const matchedQuestion = await questionModel.aggregate([
       {
@@ -243,29 +244,21 @@ const updateQuestionController = async (req, res) => {
       });
     }
 
-    try {
-      //update the fields
-      const updatedFields = await questionModel.updateOne(
-        { _id: quid },
-        {
-          $set: fieldsToUpdate,
-        },
-        { runValidators: true }
-      );
+    //update the fields
+    const updatedFields = await questionModel.updateOne(
+      { _id: quid },
+      {
+        $set: fieldsToUpdate,
+      },
+      { runValidators: true }
+    );
 
-      //error if modified count is not 1 as we are updating only one question here
-      if (updatedFields.modifiedCount != 1) {
-        return res.status(400).send({
-          success: false,
-          message: "No fields updated",
-          data: {},
-        });
-      }
-    } catch (error) {
+    //error if modified count is not 1 as we are updating only one question here
+    if (updatedFields.modifiedCount != 1) {
       return res.status(400).send({
         success: false,
-        message: error.name,
-        data: error,
+        message: "No fields updated",
+        data: {},
       });
     }
 
@@ -278,7 +271,7 @@ const updateQuestionController = async (req, res) => {
     return res.status(500).send({
       success: false,
       message: error.name || "Failed to update",
-      data: error,
+      data: error.message,
     });
   }
 };
