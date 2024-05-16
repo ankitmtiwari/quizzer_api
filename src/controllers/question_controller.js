@@ -278,6 +278,13 @@ const updateQuestionController = async (req, res) => {
 
 const deleteQuestionController = async (req, res) => {
   const { quid } = req.body;
+
+  if (!quid) {
+    return res
+      .status(400)
+      .send({ success: false, message: "quid is required", data: {} });
+  }
+  
   if (!req.user._id) {
     return res.status(401).send({
       success: false,
@@ -296,8 +303,12 @@ const deleteQuestionController = async (req, res) => {
   //     data: { quid },
   //   });
   // }
+
   const questionDeeleteMarkSUmmary = await questionModel
-    .updateOne({ _id: quid }, { $set: { isActive: false } })
+    .updateOne(
+      { _id: quid, addedBy: req.user._id },
+      { $set: { isActive: false } }
+    )
     .catch((err) => {
       return res.status(500).send({
         success: false,
@@ -312,6 +323,7 @@ const deleteQuestionController = async (req, res) => {
       .status(400)
       .send({ success: false, message: "Failed to mark as deleted", data: {} });
   }
+
   return res
     .status(200)
     .send({ success: true, message: "Delete Question Sucess", data: {} });
